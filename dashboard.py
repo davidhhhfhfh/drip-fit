@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import io
 
-st.set_page_config(page_title="Drip Fit - Mega Dashboard", layout="wide")
+st.set_page_config(page_title="Drip Fit - Elite Dashboard", layout="wide")
 
-# تصميم واجهة المستخدم
+# تصميم واجهة المستخدم الاحترافية
 st.markdown("""
     <div style="background-color:#0f172a; padding:25px; border-radius:15px; text-align:center; margin-bottom:30px; border: 1px solid #1e293b;">
         <h1 style="color:#f8fafc; margin:0; font-family: 'Cairo', sans-serif;">🚀 النظام الذكي الشامل لإدارة حسابات Drip Fit</h1>
-        <p style="color:#94a3b8; margin:8px 0 0 0; font-size:16px;">دمج شيتات متعددة، فلترة ذكية، تحليلات مالية متقدمة والخريطة الذهنية لأسباب المرتجعات</p>
+        <p style="color:#38bdf8; margin:8px 0 0 0; font-size:16px; font-weight:bold;">فلترة ذكية، تحليلات مالية متقدمة، ونظام رصد نسب الإلغاء والمرتجعات</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -94,22 +94,43 @@ if store_files and shipping_files:
         # تنظيف شيت الإخراج النهائي ليعود بنفس مظهره الأصلي الفخم
         df_export = df_clean_orders.drop(columns=['ID_str', 'phone1_clean', 'phone2_clean'], errors='ignore')
         
-        # --- 3. عرض مؤشرات الأداء والماليات (KPIs) ---
+        # --- 3. عرض مؤشرات الأداء والماليات المتقدمة (KPIs) ---
         total_orders_uploaded = len(df_store)
         clean_orders_count = len(df_clean_orders)
         total_returns_deleted = total_orders_uploaded - clean_orders_count
         
+        # حساب الحسابات المالية وقطع الملابس
         total_pieces_delivered = int(df_clean_orders['إجمالي القطع في الأوردر'].sum())
         total_net_revenue = df_clean_orders['Price'].sum()
-        total_shipping_fees = df_clean_orders['تكلفة الشحن المتوقعة'].sum()
         total_grand_amount = df_clean_orders['الإجمالي بالشحن'].sum()
         
+        # حساب نسبة المرتجعات العامة ونسبة الإلغاء الفعلي
+        return_rate = (total_returns_deleted / total_orders_uploaded * 100) if total_orders_uploaded > 0 else 0
+        
+        # حساب نسبة الإلغاء الدقيقة بناءً على أسباب فشل التسليم (العميل لغى الأوردر أو بكنسل)
+        cancellation_reasons = ['العميل لغى الاوردر', 'العميل بيكنسل']
+        if 'اسباب فشل التسليم' in df_returns_only.columns:
+            total_canceled_orders = df_returns_only['اسباب فشل التسليم'].isin(cancellation_reasons).sum()
+        else:
+            total_canceled_orders = 0
+        cancellation_rate = (total_canceled_orders / total_orders_uploaded * 100) if total_orders_uploaded > 0 else 0
+        
         st.markdown("### 📊 الملخص المالي والتشغيلي المدمج")
+        
+        # عرض الصف الأول من المؤشرات الأساسية
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        kpi1.metric("📦 الأوردرات الناجحة والمتبقية", f"{clean_orders_count} أوردر", f"تم مسح {total_returns_deleted} مرتجع")
-        kpi2.metric("👕 إجمالي قطع الملابس المشحونة", f"{total_pieces_delivered} قطعة")
-        kpi3.metric("💰 صافي قيمة المنتجات (بدون شحن)", f"{total_net_revenue:,.1f} ج.م")
-        kpi4.metric("🧾 إجمالي التحصيل المتوقع الشامل", f"{total_grand_amount:,.1f} ج.م")
+        kpi1.metric("📦 الأوردرات الصافية الناجحة", f"{clean_orders_count} أوردر", f"تم مسح {total_returns_deleted} مرتجع")
+        kpi2.metric("👕 قطع الملابس المبيعة", f"{total_pieces_delivered} قطعة")
+        kpi3.metric("💰 صافي قيمة المنتجات", f"{total_net_revenue:,.1f} ج.م")
+        kpi4.metric("🧾 إجمالي التحصيل بالشحن", f"{total_grand_amount:,.1f} ج.م")
+        
+        # عرض الصف الثاني من نسب الأداء الحساسة (المرتجعات والإلغاء)
+        st.write("")
+        col_rates1, col_rates2 = st.columns(2)
+        with col_rates1:
+            st.metric("🔄 نسبة المرتجعات الإجمالية", f"{return_rate:.1f}%", help="إجمالي الشحنات التي عادت للراسل منسوبة لكل الأوردرات المرفوعة")
+        with col_rates2:
+            st.metric("🛑 نسبة الإلغاء الفعلي للعملاء", f"{cancellation_rate:.1f}%", delta=f"{total_canceled_orders} أوردر ملغي", delta_color="inverse", help="النسبة المئوية للأوردرات التي قام العميل بإلغائها بنفسه")
         
         st.markdown("---")
         
@@ -129,7 +150,7 @@ if store_files and shipping_files:
                     <div style="background-color:#1e293b; padding:15px; border-radius:10px; min-height:180px; border-top: 5px solid #ef4444;">
                         <h4 style="color:#f8fafc; margin:0 0 10px 0;">🛑 أسباب سلوك وقرار العميل</h4>
                         <ul style="color:#cbd5e1; padding-right:20px; font-size:14px; direction:rtl;">
-                            <li><b>العميل لغى الأوردر أو كنسل:</b> {reason_counts.get('العميل لغى الاوردر', 0) + reason_counts.get('العميل بيكنسل', 0)} أوردر</li>
+                            <li><b>العميل لغى الأوردر أو كنسل:</b> {reason_counts.get('العميل لغى الاوردر', 0) + reason_counts.get('العميل بيكنسل', 0)} أوردر (نسبة إلغاء {cancellation_rate:.1f}%)</li>
                             <li><b>العميل لا يرد على الهاتف:</b> {reason_counts.get('العميل لا يرد', 0)} أوردر</li>
                             <li><b>رفض دفع مصاريف الشحن:</b> {reason_counts.get('العميل رفض دفع الشحن', 0)} أوردر</li>
                         </ul>
